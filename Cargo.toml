@@ -1,5 +1,7 @@
 [package]
 name = "ic-e8s"
+description = "Fixed decimal point types for the Internet Computer with support for multiplication and division. Makes it easy to make finance calculations precisely."
+license = "MIT"
 version = "0.1.0"
 edition = "2021"
 
