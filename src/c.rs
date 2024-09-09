@@ -1,9 +1,11 @@
 use std::{
+    borrow::Cow,
     fmt::Display,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
 use candid::{CandidType, Nat};
+use ic_stable_structures::{storable::Bound, Storable};
 use num_bigint::BigUint;
 use serde::Deserialize;
 
@@ -355,4 +357,19 @@ impl<const D: usize> From<u128> for ECs<D> {
     fn from(value: u128) -> Self {
         Self::new(BigUint::from(value))
     }
+}
+
+impl<const D: usize> Storable for ECs<D> {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(self.val.to_bytes_le())
+    }
+
+    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
+        Self::new(BigUint::from_bytes_le(&bytes))
+    }
+
+    const BOUND: Bound = Bound::Bounded {
+        max_size: D as u32,
+        is_fixed_size: true,
+    };
 }

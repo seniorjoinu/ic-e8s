@@ -2,7 +2,7 @@
 name = "ic-e8s"
 description = "Fixed decimal point types for the Internet Computer with support for multiplication and division. Makes it easy to make finance calculations precisely."
 license = "MIT"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -12,3 +12,4 @@ candid = "0.10"
 serde = "1.0"
 lazy_static = "1.4"
 num-bigint = "0.4"
+ic-stable-structures = "0.6"
