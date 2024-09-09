@@ -350,3 +350,9 @@ impl<const D: usize> From<u64> for ECs<D> {
         Self::new(BigUint::from(value))
     }
 }
+
+impl<const D: usize> From<u128> for ECs<D> {
+    fn from(value: u128) -> Self {
+        Self::new(BigUint::from(value))
+    }
+}
