@@ -3,7 +3,8 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
-use candid::{CandidType, Nat};
+use candid::{decode_one, encode_one, CandidType, Nat};
+use ic_stable_structures::{storable::Bound, Storable};
 use num_bigint::BigUint;
 use serde::Deserialize;
 
@@ -484,4 +485,16 @@ impl<'de> Deserialize<'de> for EDs {
 
         Ok(Self::new(a.val.0, a.decimals))
     }
+}
+
+impl Storable for EDs {
+    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+        std::borrow::Cow::Owned(encode_one(self).expect("Unable to encode"))
+    }
+
+    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
+        decode_one(&bytes).expect("Unable to decode")
+    }
+
+    const BOUND: Bound = Bound::Unbounded;
 }

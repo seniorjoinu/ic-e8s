@@ -369,7 +369,7 @@ impl<const D: usize> Storable for ECs<D> {
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: D as u32,
+        max_size: D as u32, // TODO: fix this, since it won't work for big numbers (same limit works for ICP though)
         is_fixed_size: true,
     };
 }
