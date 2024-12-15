@@ -359,17 +359,60 @@ impl<const D: usize> From<u128> for ECs<D> {
     }
 }
 
-impl<const D: usize> Storable for ECs<D> {
-    fn to_bytes(&self) -> Cow<[u8]> {
-        Cow::Owned(self.val.to_bytes_le())
+impl Storable for E8s {
+    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+        let mut val_buf = self.val.to_bytes_le();
+        let len = val_buf.len();
+
+        assert!(len <= 32, "Unable to encode E8s: value too big");
+
+        val_buf.resize(33, 0);
+        val_buf[32] = len as u8;
+
+        std::borrow::Cow::Owned(val_buf)
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Self::new(BigUint::from_bytes_le(&bytes))
+        assert_eq!(
+            bytes.len(),
+            33,
+            "Unable to decode E8s: invalid number of bytes provider"
+        );
+
+        let len = bytes[32];
+        let val = BigUint::from_bytes_le(&bytes[0..len as usize]);
+
+        Self { val }
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: D as u32, // TODO: fix this, since it won't work for big numbers (same limit works for ICP though)
+        max_size: 33,
         is_fixed_size: true,
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use ic_stable_structures::Storable;
+
+    use crate::c::E8s;
+
+    #[test]
+    fn encoding_works_fine() {
+        let a = E8s::f0_2();
+        let a1 = E8s::from_bytes(a.to_bytes());
+        assert_eq!(a, a1);
+
+        let b = E8s::one();
+        let b1 = E8s::from_bytes(b.to_bytes());
+        assert_eq!(b, b1);
+
+        let c = E8s::from(u128::MAX);
+        let c1 = E8s::from_bytes(c.to_bytes());
+        assert_eq!(c, c1);
+
+        let d = E8s::from(u64::MAX);
+        let d1 = E8s::from_bytes(d.to_bytes());
+        assert_eq!(d, d1);
+    }
 }

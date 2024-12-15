@@ -3,7 +3,7 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
-use candid::{decode_one, encode_one, CandidType, Nat};
+use candid::{CandidType, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use num_bigint::BigUint;
 use serde::Deserialize;
@@ -11,10 +11,19 @@ use serde::Deserialize;
 use crate::{c::ECs, ES_BASES};
 
 /// Fixed-point decimals with primitive math (+-*/) implemented correctly
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EDs {
     pub val: BigUint,
     pub decimals: u8,
+}
+
+impl Default for EDs {
+    fn default() -> Self {
+        Self {
+            val: BigUint::default(),
+            decimals: 8,
+        }
+    }
 }
 
 impl EDs {
@@ -441,6 +450,12 @@ impl From<(u64, u8)> for EDs {
     }
 }
 
+impl From<(u128, u8)> for EDs {
+    fn from((value, decimals): (u128, u8)) -> Self {
+        Self::new(BigUint::from(value), decimals)
+    }
+}
+
 impl Into<Nat> for EDs {
     fn into(self) -> Nat {
         Nat(self.val)
@@ -489,12 +504,60 @@ impl<'de> Deserialize<'de> for EDs {
 
 impl Storable for EDs {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        std::borrow::Cow::Owned(encode_one(self).expect("Unable to encode"))
+        let mut val_buf = self.val.to_bytes_le();
+        let len = val_buf.len();
+
+        assert!(len <= 32, "Unable to encode EDs: value too big");
+
+        val_buf.resize(34, 0);
+        val_buf[32] = self.decimals;
+        val_buf[33] = len as u8;
+
+        std::borrow::Cow::Owned(val_buf)
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        decode_one(&bytes).expect("Unable to decode")
+        assert_eq!(
+            bytes.len(),
+            34,
+            "Unable to decode EDs: invalid number of bytes provider"
+        );
+
+        let len = bytes[33];
+        let val = BigUint::from_bytes_le(&bytes[0..len as usize]);
+        let decimals = bytes[32];
+
+        Self { val, decimals }
     }
 
-    const BOUND: Bound = Bound::Unbounded;
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 34,
+        is_fixed_size: true,
+    };
+}
+
+#[cfg(test)]
+mod tests {
+    use ic_stable_structures::Storable;
+
+    use super::EDs;
+
+    #[test]
+    fn encoding_works_fine() {
+        let a = EDs::f0_2(7);
+        let a1 = EDs::from_bytes(a.to_bytes());
+        assert_eq!(a, a1);
+
+        let b = EDs::one(8);
+        let b1 = EDs::from_bytes(b.to_bytes());
+        assert_eq!(b, b1);
+
+        let c = EDs::from((u128::MAX, 31));
+        let c1 = EDs::from_bytes(c.to_bytes());
+        assert_eq!(c, c1);
+
+        let d = EDs::from((u64::MAX, 31));
+        let d1 = EDs::from_bytes(d.to_bytes());
+        assert_eq!(d, d1);
+    }
 }
