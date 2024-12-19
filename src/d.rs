@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     fmt::Display,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
@@ -135,14 +136,6 @@ impl EDs {
         Self::new(Self::base(decimals) * BigUint::from(2u64), decimals)
     }
 
-    pub fn sqrt(&self) -> Self {
-        let base = Self::base(self.decimals);
-        let whole = &self.val / base;
-        let sqrt_whole = whole.sqrt();
-
-        Self::new(sqrt_whole * base, self.decimals)
-    }
-
     pub fn to_const<const D: usize>(self) -> ECs<D> {
         if self.decimals != D as u8 {
             unreachable!(
@@ -175,6 +168,34 @@ impl EDs {
         self.decimals = new_decimals;
 
         self
+    }
+
+    pub fn sqrt(&self) -> Self {
+        let a = Self::one(self.decimals);
+        if self == &a {
+            return a;
+        }
+
+        let mut low = Self::zero(self.decimals);
+        let mut high = self.clone();
+        let one = BigUint::from(1u64);
+
+        while (&high - &low).val > one {
+            let mid = (&low + &high) / Self::two(self.decimals);
+            let mid_squared = &mid * &mid;
+
+            match mid_squared.cmp(self) {
+                Ordering::Equal => return mid,
+                Ordering::Greater => {
+                    high = mid;
+                }
+                Ordering::Less => {
+                    low = mid;
+                }
+            }
+        }
+
+        low
     }
 }
 

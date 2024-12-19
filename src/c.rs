@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    cmp::Ordering,
     fmt::Display,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
@@ -108,14 +109,6 @@ impl<const D: usize> ECs<D> {
         Self::new(Self::base() * BigUint::from(2u64))
     }
 
-    pub fn sqrt(&self) -> Self {
-        let base = Self::base();
-        let whole = &self.val / base;
-        let sqrt_whole = whole.sqrt();
-
-        Self::new(sqrt_whole * base)
-    }
-
     pub fn to_dynamic(self) -> EDs {
         EDs::new(self.val, D as u8)
     }
@@ -138,6 +131,34 @@ impl<const D: usize> ECs<D> {
         } else {
             ECs::<D1>::new(self.val / base)
         }
+    }
+
+    pub fn sqrt(&self) -> Self {
+        let a = Self::one();
+        if self == &a {
+            return a;
+        }
+
+        let mut low = Self::zero();
+        let mut high = self.clone();
+        let one = BigUint::from(1u64);
+
+        while (&high - &low).val > one {
+            let mid = (&low + &high) / Self::two();
+            let mid_squared = &mid * &mid;
+
+            match mid_squared.cmp(self) {
+                Ordering::Equal => return mid,
+                Ordering::Greater => {
+                    high = mid;
+                }
+                Ordering::Less => {
+                    low = mid;
+                }
+            }
+        }
+
+        low
     }
 }
 
@@ -414,5 +435,17 @@ mod tests {
         let d = E8s::from(u64::MAX);
         let d1 = E8s::from_bytes(d.to_bytes());
         assert_eq!(d, d1);
+    }
+
+    #[test]
+    fn sqrt_works_fine() {
+        assert_eq!(E8s::zero().sqrt(), E8s::zero());
+        assert_eq!(E8s::one().sqrt(), E8s::one());
+        assert_eq!(E8s::from(4_0000_0000u64).sqrt(), E8s::two());
+        assert_eq!(
+            E8s::from(100_0000_0000u64).sqrt(),
+            E8s::from(10_0000_0000u64)
+        );
+        assert_eq!(E8s::two().sqrt(), E8s::from(1_4142_1356u64));
     }
 }
